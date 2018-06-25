@@ -8,7 +8,9 @@ package com.microsoft.azure.management.batchai.samples;
 import com.microsoft.azure.management.Azure;
 import com.microsoft.azure.management.batchai.BatchAICluster;
 import com.microsoft.azure.management.batchai.BatchAIJob;
+import com.microsoft.azure.management.batchai.BatchAIWorkspace;
 import com.microsoft.azure.management.batchai.ExecutionState;
+import com.microsoft.azure.management.batchai.BatchAIExperiment;
 import com.microsoft.azure.management.batchai.OutputFile;
 import com.microsoft.azure.management.compute.VirtualMachineSizeTypes;
 import com.microsoft.azure.management.resources.fluentcore.arm.Region;
@@ -27,6 +29,7 @@ import java.io.File;
  * Azure Batch AI sample.
  *  - Create Storage account and Azure file share
  *  - Upload sample data to Azure file share
+ *  - Create a workspace an experiment
  *  - Create Batch AI cluster that uses Azure file share to host the training data and scripts for the learning job
  *  - Create Microsoft Cognitive Toolkit job to run on the cluster
  *  - Wait for job to complete
@@ -47,7 +50,10 @@ public final class ManageBatchAI {
         final Region region = Region.EUROPE_WEST;
         final String rgName = SdkContext.randomResourceName("rg", 20);
         final String saName = SdkContext.randomResourceName("sa", 20);
+        final String workspaceName = SdkContext.randomResourceName("ws", 20);
+        final String experimentName = SdkContext.randomResourceName("exp", 20);
         final String shareName = SdkContext.randomResourceName("fs", 20);
+        final String jobShareName = SdkContext.randomResourceName("fs", 20);
         final String clusterName = SdkContext.randomResourceName("cluster", 15);
         final String userName = "tirekicker";
         final String sharePath = "mnistcntksample";
@@ -84,11 +90,25 @@ public final class ManageBatchAI {
             sampleDir.getFileReference("ConvNet_MNIST.py").uploadFromFile(sampleDataPath + "/ConvNet_MNIST.py");
 
             //=============================================================
-            // Create Batch AI cluster that uses Azure file share to host the training data and scripts for the learning job
-            System.out.println("Creating Batch AI cluster...");
-            BatchAICluster cluster = azure.batchAIClusters().define(clusterName)
+            // Create another fileshare to be mounted directly to the job
+            CloudFileShare jobFileShare = CloudStorageAccount.parse(String.format("DefaultEndpointsProtocol=https;AccountName=%s;AccountKey=%s;EndpointSuffix=core.windows.net",
+                    saName, storageAccountKey.value()))
+                    .createCloudFileClient()
+                    .getShareReference(jobShareName);
+            jobFileShare.create();
+
+            //=============================================================
+            // Create a workspace and experiment
+            BatchAIWorkspace workspace = azure.batchAIWorkspaces().define(workspaceName)
                     .withRegion(region)
                     .withNewResourceGroup(rgName)
+                    .create();
+            BatchAIExperiment experiment = workspace.experiments().define(experimentName).create();
+
+            //=============================================================
+            // Create Batch AI cluster that uses Azure file share to host the training data and scripts for the learning job
+            System.out.println("Creating Batch AI cluster...");
+            BatchAICluster cluster = workspace.clusters().define(clusterName)
                     .withVMSize(VirtualMachineSizeTypes.STANDARD_NC6.toString())
                     .withUserName(userName)
                     .withPassword("MyPassword")
@@ -106,8 +126,8 @@ public final class ManageBatchAI {
             // =============================================================
             // Create Microsoft Cognitive Toolkit job to run on the cluster
             System.out.println("Creating Batch AI job...");
-            BatchAIJob job = cluster.jobs().define("myJob")
-                    .withRegion(region)
+            BatchAIJob job = experiment.jobs().define("myJob")
+                    .withExistingCluster(cluster)
                     .withNodeCount(1)
                     .withStdOutErrPathPrefix("$AZ_BATCHAI_MOUNT_ROOT/azurefileshare")
                     .defineCognitiveToolkit()
@@ -117,6 +137,12 @@ public final class ManageBatchAI {
                     .withInputDirectory("SAMPLE", "$AZ_BATCHAI_MOUNT_ROOT/azurefileshare/" + sharePath)
                     .withOutputDirectory("MODEL", "$AZ_BATCHAI_MOUNT_ROOT/azurefileshare/model")
                     .withContainerImage("microsoft/cntk:2.1-gpu-python3.5-cuda8.0-cudnn6.0")
+                    .defineAzureFileShare()
+                        .withStorageAccountName(saName)
+                        .withAzureFileUrl(jobFileShare.getUri().toString())
+                        .withRelativeMountPath("jobfileshare")
+                        .withAccountKey(storageAccountKey.value())
+                        .attach()
                     .create();
             System.out.println("Created Batch AI job.");
             Utils.print(job);

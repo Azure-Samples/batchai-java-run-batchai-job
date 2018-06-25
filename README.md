@@ -10,6 +10,7 @@ author: lenala
   Azure Batch AI sample.
    - Create Storage account and Azure file share
    - Upload sample data to Azure file share
+   - Create a workspace an experiment
    - Create Batch AI cluster that uses Azure file share to host the training data and scripts for the learning job
    - Create Microsoft Cognitive Toolkit job to run on the cluster
    - Wait for job to complete
@@ -23,7 +24,7 @@ author: lenala
 
 To run this sample:
 
-Set the environment variable `AZURE_AUTH_LOCATION` with the full path for an auth file. See [how to create an auth file](https://github.com/Azure/azure-sdk-for-java/blob/master/AUTH.md).
+Set the environment variable `AZURE_AUTH_LOCATION` with the full path for an auth file. See [how to create an auth file](https://github.com/Azure/azure-libraries-for-java/blob/master/AUTH.md).
 
     git clone https://github.com/Azure-Samples/batchai-java-run-batchai-job.git
 
