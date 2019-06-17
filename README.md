@@ -1,7 +1,7 @@
 ---
 services: Batchai
 platforms: java
-author: lenala
+author: yaohaizh
 ---
 
 ## Getting Started with Batchai - Manage Batch AI - in Java ##
@@ -16,7 +16,7 @@ author: lenala
    - Wait for job to complete
    - Get output files
  
-  Please note: in order to run this sample, please download and unzip sample package from here: https://batchaisamples.blob.core.windows.net/samples/BatchAIQuickStart.zip?st=2017-09-29T18%3A29%3A00Z&amp;se=2099-12-31T08%3A00%3A00Z&amp;sp=rl&amp;sv=2016-05-31&amp;sr=b&amp;sig=hrAZfbZC%2BQ%2FKccFQZ7OC4b%2FXSzCF5Myi4Cj%2BW3sVZDo%3D
+  Please note: in order to run this sample, please download and unzip sample package from here: https://raw.githubusercontent.com/Azure/azure-libraries-for-java/master/azure-samples/src/main/resources/BatchAIQuickStart.zip
   Export path to the content to $SAMPLE_DATA_PATH.
  
 
@@ -24,7 +24,7 @@ author: lenala
 
 To run this sample:
 
-Set the environment variable `AZURE_AUTH_LOCATION` with the full path for an auth file. See [how to create an auth file](https://github.com/Azure/azure-sdk-for-java/blob/master/AUTH.md).
+Set the environment variable `AZURE_AUTH_LOCATION` with the full path for an auth file. See [how to create an auth file](https://github.com/Azure/azure-libraries-for-java/blob/master/AUTH.md).
 
     git clone https://github.com/Azure-Samples/batchai-java-run-batchai-job.git
 
