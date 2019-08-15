@@ -4,12 +4,12 @@ languages:
 - java
 products:
 - azure
-services: Batchai
-platforms: java
-author: yaohaizh
+extensions:
+- services: Batchai
+- platforms: java
 ---
 
-## Getting Started with Batchai - Manage Batch AI - in Java ##
+# Getting Started with Batchai - Manage Batch AI - in Java #
 
 
   Azure Batch AI sample.
