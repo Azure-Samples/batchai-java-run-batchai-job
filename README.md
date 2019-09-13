@@ -4,9 +4,8 @@ languages:
 - java
 products:
 - azure
-extensions:
-- services: Batchai
-- platforms: java
+description: "Azure Batch AI sample."
+urlFragment: batchai-java-run-batchai-job
 ---
 
 # Getting Started with Batchai - Manage Batch AI - in Java #
