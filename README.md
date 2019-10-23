@@ -9,7 +9,7 @@ description: "Azure Batch AI sample."
 urlFragment: batchai-java-run-batchai-job
 ---
 
-# Getting Started with Batchai - Manage Batch AI - in Java #
+# Manage Batch AI in Java
 
 Azure Batch AI sample.
   
