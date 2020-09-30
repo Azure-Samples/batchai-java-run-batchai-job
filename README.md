@@ -5,8 +5,8 @@ languages:
 products:
 - azure
 extensions:
-- services: Batchai
-- platforms: java
+  services: Batchai
+  platforms: java
 ---
 
 # Getting Started with Batchai - Manage Batch AI - in Java #
