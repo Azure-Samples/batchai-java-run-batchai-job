@@ -28,14 +28,14 @@ import java.io.File;
 
 /**
  * Azure Batch AI sample.
- *  - Create Storage account and Azure file share
- *  - Upload sample data to Azure file share
- *  - Create a workspace an experiment
- *  - Create Batch AI cluster that uses Azure file share to host the training data and scripts for the learning job
- *  - Create Microsoft Cognitive Toolkit job to run on the cluster
- *  - Wait for job to complete
- *  - Get output files
- *
+ * - Create Storage account and Azure file share
+ * - Upload sample data to Azure file share
+ * - Create a workspace an experiment
+ * - Create Batch AI cluster that uses Azure file share to host the training data and scripts for the learning job
+ * - Create Microsoft Cognitive Toolkit job to run on the cluster
+ * - Wait for job to complete
+ * - Get output files
+ * <p>
  * Please note: in order to run this sample, please download and unzip sample package from here: https://raw.githubusercontent.com/Azure/azure-libraries-for-java/master/azure-samples/src/main/resources/BatchAIQuickStart.zip
  * Export path to the content to $SAMPLE_DATA_PATH.
  */
@@ -76,7 +76,8 @@ public final class ManageBatchAI {
                     saName, storageAccountKey.value());
 
             ShareServiceClient cloudFileShare =
-                    new ShareServiceClientBuilder().connectionString(connectionString)
+                    new ShareServiceClientBuilder()
+                            .connectionString(connectionString)
                             .buildClient();
             ShareClient shareClient = cloudFileShare.createShare(shareName);
 
@@ -118,11 +119,11 @@ public final class ManageBatchAI {
                     .withPassword(password)
                     .withAutoScale(0, 2)
                     .defineAzureFileShare()
-                        .withStorageAccountName(saName)
-                        .withAzureFileUrl(shareClient.getShareUrl())
-                        .withRelativeMountPath("azurefileshare")
-                        .withAccountKey(storageAccountKey.value())
-                        .attach()
+                    .withStorageAccountName(saName)
+                    .withAzureFileUrl(shareClient.getShareUrl())
+                    .withRelativeMountPath("azurefileshare")
+                    .withAccountKey(storageAccountKey.value())
+                    .attach()
                     .create();
             System.out.println("Created Batch AI cluster.");
             Utils.print(cluster);
@@ -135,18 +136,18 @@ public final class ManageBatchAI {
                     .withNodeCount(1)
                     .withStdOutErrPathPrefix("$AZ_BATCHAI_MOUNT_ROOT/azurefileshare")
                     .defineCognitiveToolkit()
-                        .withPythonScriptFile("$AZ_BATCHAI_INPUT_SAMPLE/ConvNet_MNIST.py")
-                        .withCommandLineArgs("$AZ_BATCHAI_INPUT_SAMPLE $AZ_BATCHAI_OUTPUT_MODEL")
-                        .attach()
+                    .withPythonScriptFile("$AZ_BATCHAI_INPUT_SAMPLE/ConvNet_MNIST.py")
+                    .withCommandLineArgs("$AZ_BATCHAI_INPUT_SAMPLE $AZ_BATCHAI_OUTPUT_MODEL")
+                    .attach()
                     .withInputDirectory("SAMPLE", "$AZ_BATCHAI_MOUNT_ROOT/azurefileshare/" + sharePath)
                     .withOutputDirectory("MODEL", "$AZ_BATCHAI_MOUNT_ROOT/azurefileshare/model")
                     .withContainerImage("microsoft/cntk:2.1-gpu-python3.5-cuda8.0-cudnn6.0")
                     .defineAzureFileShare()
-                        .withStorageAccountName(saName)
-                        .withAzureFileUrl(jobShareClient.getShareUrl())
-                        .withRelativeMountPath("jobfileshare")
-                        .withAccountKey(storageAccountKey.value())
-                        .attach()
+                    .withStorageAccountName(saName)
+                    .withAzureFileUrl(jobShareClient.getShareUrl())
+                    .withRelativeMountPath("jobfileshare")
+                    .withAccountKey(storageAccountKey.value())
+                    .attach()
                     .create();
             System.out.println("Created Batch AI job.");
             Utils.print(job);
