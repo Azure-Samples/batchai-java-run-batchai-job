@@ -18,9 +18,10 @@ import com.microsoft.azure.management.resources.fluentcore.utils.SdkContext;
 import com.microsoft.azure.management.samples.Utils;
 import com.microsoft.azure.management.storage.StorageAccount;
 import com.microsoft.azure.management.storage.StorageAccountKey;
-import com.microsoft.azure.storage.CloudStorageAccount;
-import com.microsoft.azure.storage.file.CloudFileDirectory;
-import com.microsoft.azure.storage.file.CloudFileShare;
+import com.azure.storage.file.share.ShareServiceClient;
+import com.azure.storage.file.share.ShareServiceClientBuilder;
+import com.azure.storage.file.share.ShareClient;
+import com.azure.storage.file.share.ShareDirectoryClient;
 import com.microsoft.rest.LogLevel;
 
 import java.io.File;
@@ -71,33 +72,34 @@ public final class ManageBatchAI {
 
             StorageAccountKey storageAccountKey = storageAccount.getKeys().get(0);
 
-            CloudFileShare cloudFileShare = CloudStorageAccount.parse(String.format("DefaultEndpointsProtocol=https;AccountName=%s;AccountKey=%s;EndpointSuffix=core.windows.net",
-                    saName, storageAccountKey.value()))
-                    .createCloudFileClient()
-                    .getShareReference(shareName);
-            cloudFileShare.create();
+            String connectionString = String.format("DefaultEndpointsProtocol=https;AccountName=%s;AccountKey=%s;EndpointSuffix=core.windows.net",
+                    saName, storageAccountKey.value());
+
+            ShareServiceClient cloudFileShare =
+                    new ShareServiceClientBuilder().connectionString(connectionString)
+                            .buildClient();
+            ShareClient shareClient = cloudFileShare.createShare(shareName);
 
             //=============================================================
             // Upload sample data to Azure file share
 
             //Get a reference to the root directory for the share.
-            CloudFileDirectory rootDir = cloudFileShare.getRootDirectoryReference();
+            ShareDirectoryClient rootDir = shareClient.getRootDirectoryClient();
 
             //Get a reference to the sampledir directory
-            CloudFileDirectory sampleDir = rootDir.getDirectoryReference(sharePath);
-            sampleDir.create();
+            ShareDirectoryClient sampleDir = rootDir.createSubdirectory(sharePath);
 
-            sampleDir.getFileReference("Train-28x28_cntk_text.txt").uploadFromFile(sampleDataPath + "/Train-28x28_cntk_text.txt");
-            sampleDir.getFileReference("Test-28x28_cntk_text.txt").uploadFromFile(sampleDataPath + "/Test-28x28_cntk_text.txt");
-            sampleDir.getFileReference("ConvNet_MNIST.py").uploadFromFile(sampleDataPath + "/ConvNet_MNIST.py");
+            sampleDir.getFileClient("Train-28x28_cntk_text.txt").uploadFromFile(sampleDataPath + "/Train-28x28_cntk_text.txt");
+            sampleDir.getFileClient("Test-28x28_cntk_text.txt").uploadFromFile(sampleDataPath + "/Test-28x28_cntk_text.txt");
+            sampleDir.getFileClient("ConvNet_MNIST.py").uploadFromFile(sampleDataPath + "/ConvNet_MNIST.py");
 
             //=============================================================
             // Create another fileshare to be mounted directly to the job
-            CloudFileShare jobFileShare = CloudStorageAccount.parse(String.format("DefaultEndpointsProtocol=https;AccountName=%s;AccountKey=%s;EndpointSuffix=core.windows.net",
-                    saName, storageAccountKey.value()))
-                    .createCloudFileClient()
-                    .getShareReference(jobShareName);
-            jobFileShare.create();
+            ShareServiceClient jobShareServiceClient =
+                    new ShareServiceClientBuilder()
+                            .connectionString(connectionString)
+                            .buildClient();
+            ShareClient jobShareClient = jobShareServiceClient.createShare(jobShareName);
 
             //=============================================================
             // Create a workspace and experiment
@@ -117,7 +119,7 @@ public final class ManageBatchAI {
                     .withAutoScale(0, 2)
                     .defineAzureFileShare()
                         .withStorageAccountName(saName)
-                        .withAzureFileUrl(cloudFileShare.getUri().toString())
+                        .withAzureFileUrl(shareClient.getShareUrl())
                         .withRelativeMountPath("azurefileshare")
                         .withAccountKey(storageAccountKey.value())
                         .attach()
@@ -141,7 +143,7 @@ public final class ManageBatchAI {
                     .withContainerImage("microsoft/cntk:2.1-gpu-python3.5-cuda8.0-cudnn6.0")
                     .defineAzureFileShare()
                         .withStorageAccountName(saName)
-                        .withAzureFileUrl(jobFileShare.getUri().toString())
+                        .withAzureFileUrl(jobShareClient.getShareUrl())
                         .withRelativeMountPath("jobfileshare")
                         .withAccountKey(storageAccountKey.value())
                         .attach()
