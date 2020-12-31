@@ -35,7 +35,6 @@ import java.io.File;
  * - Create Microsoft Cognitive Toolkit job to run on the cluster
  * - Wait for job to complete
  * - Get output files
- * <p>
  * Please note: in order to run this sample, please download and unzip sample package from here: https://raw.githubusercontent.com/Azure/azure-libraries-for-java/master/azure-samples/src/main/resources/BatchAIQuickStart.zip
  * Export path to the content to $SAMPLE_DATA_PATH.
  */
