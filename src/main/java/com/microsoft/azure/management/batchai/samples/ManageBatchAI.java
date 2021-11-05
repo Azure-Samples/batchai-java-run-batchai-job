@@ -18,23 +18,23 @@ import com.microsoft.azure.management.resources.fluentcore.utils.SdkContext;
 import com.microsoft.azure.management.samples.Utils;
 import com.microsoft.azure.management.storage.StorageAccount;
 import com.microsoft.azure.management.storage.StorageAccountKey;
-import com.microsoft.azure.storage.CloudStorageAccount;
-import com.microsoft.azure.storage.file.CloudFileDirectory;
-import com.microsoft.azure.storage.file.CloudFileShare;
+import com.azure.storage.file.share.ShareServiceClient;
+import com.azure.storage.file.share.ShareServiceClientBuilder;
+import com.azure.storage.file.share.ShareClient;
+import com.azure.storage.file.share.ShareDirectoryClient;
 import com.microsoft.rest.LogLevel;
 
 import java.io.File;
 
 /**
  * Azure Batch AI sample.
- *  - Create Storage account and Azure file share
- *  - Upload sample data to Azure file share
- *  - Create a workspace an experiment
- *  - Create Batch AI cluster that uses Azure file share to host the training data and scripts for the learning job
- *  - Create Microsoft Cognitive Toolkit job to run on the cluster
- *  - Wait for job to complete
- *  - Get output files
- *
+ * - Create Storage account and Azure file share
+ * - Upload sample data to Azure file share
+ * - Create a workspace an experiment
+ * - Create Batch AI cluster that uses Azure file share to host the training data and scripts for the learning job
+ * - Create Microsoft Cognitive Toolkit job to run on the cluster
+ * - Wait for job to complete
+ * - Get output files
  * Please note: in order to run this sample, please download and unzip sample package from here: https://raw.githubusercontent.com/Azure/azure-libraries-for-java/master/azure-samples/src/main/resources/BatchAIQuickStart.zip
  * Export path to the content to $SAMPLE_DATA_PATH.
  */
@@ -71,33 +71,35 @@ public final class ManageBatchAI {
 
             StorageAccountKey storageAccountKey = storageAccount.getKeys().get(0);
 
-            CloudFileShare cloudFileShare = CloudStorageAccount.parse(String.format("DefaultEndpointsProtocol=https;AccountName=%s;AccountKey=%s;EndpointSuffix=core.windows.net",
-                    saName, storageAccountKey.value()))
-                    .createCloudFileClient()
-                    .getShareReference(shareName);
-            cloudFileShare.create();
+            String connectionString = String.format("DefaultEndpointsProtocol=https;AccountName=%s;AccountKey=%s;EndpointSuffix=core.windows.net",
+                    saName, storageAccountKey.value());
+
+            ShareServiceClient cloudFileShare =
+                    new ShareServiceClientBuilder()
+                            .connectionString(connectionString)
+                            .buildClient();
+            ShareClient shareClient = cloudFileShare.createShare(shareName);
 
             //=============================================================
             // Upload sample data to Azure file share
 
             //Get a reference to the root directory for the share.
-            CloudFileDirectory rootDir = cloudFileShare.getRootDirectoryReference();
+            ShareDirectoryClient rootDir = shareClient.getRootDirectoryClient();
 
             //Get a reference to the sampledir directory
-            CloudFileDirectory sampleDir = rootDir.getDirectoryReference(sharePath);
-            sampleDir.create();
+            ShareDirectoryClient sampleDir = rootDir.createSubdirectory(sharePath);
 
-            sampleDir.getFileReference("Train-28x28_cntk_text.txt").uploadFromFile(sampleDataPath + "/Train-28x28_cntk_text.txt");
-            sampleDir.getFileReference("Test-28x28_cntk_text.txt").uploadFromFile(sampleDataPath + "/Test-28x28_cntk_text.txt");
-            sampleDir.getFileReference("ConvNet_MNIST.py").uploadFromFile(sampleDataPath + "/ConvNet_MNIST.py");
+            sampleDir.getFileClient("Train-28x28_cntk_text.txt").uploadFromFile(sampleDataPath + "/Train-28x28_cntk_text.txt");
+            sampleDir.getFileClient("Test-28x28_cntk_text.txt").uploadFromFile(sampleDataPath + "/Test-28x28_cntk_text.txt");
+            sampleDir.getFileClient("ConvNet_MNIST.py").uploadFromFile(sampleDataPath + "/ConvNet_MNIST.py");
 
             //=============================================================
             // Create another fileshare to be mounted directly to the job
-            CloudFileShare jobFileShare = CloudStorageAccount.parse(String.format("DefaultEndpointsProtocol=https;AccountName=%s;AccountKey=%s;EndpointSuffix=core.windows.net",
-                    saName, storageAccountKey.value()))
-                    .createCloudFileClient()
-                    .getShareReference(jobShareName);
-            jobFileShare.create();
+            ShareServiceClient jobShareServiceClient =
+                    new ShareServiceClientBuilder()
+                            .connectionString(connectionString)
+                            .buildClient();
+            ShareClient jobShareClient = jobShareServiceClient.createShare(jobShareName);
 
             //=============================================================
             // Create a workspace and experiment
@@ -116,11 +118,11 @@ public final class ManageBatchAI {
                     .withPassword(password)
                     .withAutoScale(0, 2)
                     .defineAzureFileShare()
-                        .withStorageAccountName(saName)
-                        .withAzureFileUrl(cloudFileShare.getUri().toString())
-                        .withRelativeMountPath("azurefileshare")
-                        .withAccountKey(storageAccountKey.value())
-                        .attach()
+                    .withStorageAccountName(saName)
+                    .withAzureFileUrl(shareClient.getShareUrl())
+                    .withRelativeMountPath("azurefileshare")
+                    .withAccountKey(storageAccountKey.value())
+                    .attach()
                     .create();
             System.out.println("Created Batch AI cluster.");
             Utils.print(cluster);
@@ -133,18 +135,18 @@ public final class ManageBatchAI {
                     .withNodeCount(1)
                     .withStdOutErrPathPrefix("$AZ_BATCHAI_MOUNT_ROOT/azurefileshare")
                     .defineCognitiveToolkit()
-                        .withPythonScriptFile("$AZ_BATCHAI_INPUT_SAMPLE/ConvNet_MNIST.py")
-                        .withCommandLineArgs("$AZ_BATCHAI_INPUT_SAMPLE $AZ_BATCHAI_OUTPUT_MODEL")
-                        .attach()
+                    .withPythonScriptFile("$AZ_BATCHAI_INPUT_SAMPLE/ConvNet_MNIST.py")
+                    .withCommandLineArgs("$AZ_BATCHAI_INPUT_SAMPLE $AZ_BATCHAI_OUTPUT_MODEL")
+                    .attach()
                     .withInputDirectory("SAMPLE", "$AZ_BATCHAI_MOUNT_ROOT/azurefileshare/" + sharePath)
                     .withOutputDirectory("MODEL", "$AZ_BATCHAI_MOUNT_ROOT/azurefileshare/model")
                     .withContainerImage("microsoft/cntk:2.1-gpu-python3.5-cuda8.0-cudnn6.0")
                     .defineAzureFileShare()
-                        .withStorageAccountName(saName)
-                        .withAzureFileUrl(jobFileShare.getUri().toString())
-                        .withRelativeMountPath("jobfileshare")
-                        .withAccountKey(storageAccountKey.value())
-                        .attach()
+                    .withStorageAccountName(saName)
+                    .withAzureFileUrl(jobShareClient.getShareUrl())
+                    .withRelativeMountPath("jobfileshare")
+                    .withAccountKey(storageAccountKey.value())
+                    .attach()
                     .create();
             System.out.println("Created Batch AI job.");
             Utils.print(job);
